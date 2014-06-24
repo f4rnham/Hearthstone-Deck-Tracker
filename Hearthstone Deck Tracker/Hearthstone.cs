@@ -29,7 +29,17 @@ namespace Hearthstone_Deck_Tracker
         public bool OpponentHasCoin;
         public bool IsUsingPremade;
 
-        public int[] OpponentHand { get; private set; }
+        private const int DefaultCoinPosition = 4;
+        private const int MaxHandSize = 10;
+
+        public int[] OpponentHandAge { get; private set; }
+        public char[] OpponentHandMarks { get; private set; }
+
+        private const char CardMarkNone = ' ';
+        private const char CardMarkCoin = 'C';
+        private const char CardMarkReturned = 'R';
+        private const char CardMarkMulliganInProgress = 'm';
+        private const char CardMarkMulliganed = 'M';
 
         private readonly List<string> _invalidCardIds = new List<string>
             {
@@ -61,10 +71,12 @@ namespace Hearthstone_Deck_Tracker
             PlayerDrawn = new ObservableCollection<Card>();
             EnemyCards = new ObservableCollection<Card>();
             _cardDb = new Dictionary<string, Card>();
-            OpponentHand = new int[10];
-            for (int i = 0; i < 10; i++)
+            OpponentHandAge = new int[MaxHandSize];
+            OpponentHandMarks = new char[MaxHandSize];
+            for (int i = 0; i < MaxHandSize; i++)
             {
-                OpponentHand[i] = -1;
+                OpponentHandAge[i] = -1;
+                OpponentHandMarks[i] = CardMarkNone;
             }
             
             LoadCardDb();
@@ -122,6 +134,7 @@ namespace Hearthstone_Deck_Tracker
             if (cardId == "GAME_005")
             {
                 OpponentHasCoin = false;
+                OpponentHandMarks[DefaultCoinPosition] = CardMarkNone;
                 return true;
             }
 
@@ -188,10 +201,21 @@ namespace Hearthstone_Deck_Tracker
             {
                 return;
             }
+
             if (cardId == "GAME_005")
             {
                 OpponentHasCoin = false;
+
+                for (int i = 0; i < MaxHandSize; ++i)
+                {
+                    if (OpponentHandMarks[i] == CardMarkCoin)
+                    {
+                        OpponentHandMarks[i] = CardMarkNone;
+                        break;
+                    }
+                }
             }
+
             Card card = GetCardFromId(cardId);
             if (EnemyCards.Any(x => x.Equals(card)))
             {
@@ -227,10 +251,11 @@ namespace Hearthstone_Deck_Tracker
             }
         }
 
-        public void EnemyMulligan()
+        public void EnemyMulligan(int pos)
         {
             EnemyHandCount--;
             OpponentDeckCount++;
+            OpponentHandMarks[pos - 1] = CardMarkMulliganInProgress;
         }
 
         public void PlayerHandDiscard(string cardId)
@@ -284,8 +309,10 @@ namespace Hearthstone_Deck_Tracker
                 }
             }
 
-            OpponentHand[EnemyHandCount - 1] = turn;
+            OpponentHandAge[EnemyHandCount - 1] = turn;
+            OpponentHandMarks[EnemyHandCount - 1] = CardMarkReturned;
         }
+
         public void EnemyHandDiscard()
         {
             EnemyHandCount--;
@@ -322,7 +349,6 @@ namespace Hearthstone_Deck_Tracker
             EnemyCards.Add(card);
         }
 
-
         internal void OpponentGet(string cardId)
         {
             EnemyHandCount++;
@@ -335,52 +361,58 @@ namespace Hearthstone_Deck_Tracker
             EnemyCards.Clear();
             EnemyHandCount = 0;
             OpponentDeckCount = 30;
-            OpponentHasCoin = true;
-            OpponentHand = new int[10];
-            //handPosIndex = 0;
-            for (int i = 0; i < 10; i++)
+            OpponentHandAge = new int[MaxHandSize];
+            OpponentHandMarks = new char[MaxHandSize];
+
+            for (int i = 0; i < MaxHandSize; i++)
             {
-                OpponentHand[i] = -1;
+                OpponentHandAge[i] = -1;
+                OpponentHandMarks[i] = CardMarkNone;
             }
-           
+
+            // Assuming opponent has coin, corrected if we draw it
+            OpponentHandMarks[DefaultCoinPosition] = CardMarkCoin;
+            OpponentHandAge[DefaultCoinPosition] = 0;
+            OpponentHasCoin = true;
         }
 
-        //private int handPosIndex;
         public void OpponentCardPosChange(CardPosChangeArgs args)
         {
             if (args.Action == OpponentHandMovement.Play)
             {
-                Debug.WriteLine(string.Format("From {0} to Play", args.From), "CardPosChange");
-                OpponentHand[args.From - 1] = -1;
-                for (int i = args.From - 1; i < 9; i++)
+                if (OpponentHandMarks[args.From - 1] == CardMarkMulliganInProgress)
                 {
-                    OpponentHand[i] = OpponentHand[i + 1];
+                    Debug.WriteLine(string.Format("Opponent card {0} - mulliganed", args.From), "CardPosChange");
+
+                    OpponentHandMarks[args.From - 1] = CardMarkMulliganed;
                 }
-                OpponentHand[9] = -1;
-                //handPosIndex--;
+                else
+                {
+                    Debug.WriteLine(string.Format("From {0} to Play", args.From), "CardPosChange");
+
+                    for (int i = args.From - 1; i < 9; i++)
+                    {
+                        OpponentHandAge[i] = OpponentHandAge[i + 1];
+                        OpponentHandMarks[i] = OpponentHandMarks[i + 1];
+                    }
+
+                    OpponentHandAge[9] = -1;
+                    OpponentHandMarks[9] = CardMarkNone;
+                }
             }
             else if (args.Action == OpponentHandMovement.Draw)
             {
-                //one of the two ifs alone always seems to screw up at some point. maybe this works
-               // if (OpponentHand[handPosIndex] == -1)
-               // {
-               //     OpponentHand[handPosIndex] = args.Turn;
-                //    Debug.WriteLine("1set " + handPosIndex + "( " + (EnemyHandCount - 1) + " )");
-                //} else 
-                if (OpponentHand[EnemyHandCount - 1] == -1)
-                {
-                    OpponentHand[EnemyHandCount - 1] = args.Turn;
-                    Debug.WriteLine("set " + (EnemyHandCount - 1));
-                }
+                if (OpponentHandAge[EnemyHandCount - 1] != -1)
+                    return;
 
-                //handPosIndex++;
+                Debug.WriteLine("Set " + (EnemyHandCount - 1).ToString() + " to " + args.Turn.ToString(), "CardPosChange");
+
+                OpponentHandAge[EnemyHandCount - 1] = args.Turn;
+                OpponentHandMarks[EnemyHandCount - 1] = CardMarkNone;
             }
-            //Debug.WriteLine(string.Join(",", OpponentHand));
-        }
 
-        public List<int> GetOpponentHandAge()
-        {
-            return OpponentHand.Where(x => x != -1).ToList();
+            Debug.WriteLine("OpponentHandAge: " + string.Join(",", OpponentHandAge));
+            Debug.WriteLine("OpponentHandMarks: " + string.Join(",", OpponentHandMarks));
         }
     }
 }

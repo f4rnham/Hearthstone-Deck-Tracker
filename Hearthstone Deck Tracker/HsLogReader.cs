@@ -23,7 +23,6 @@ namespace Hearthstone_Deck_Tracker
         PlayerDeckDiscard,
         PlayerHandDiscard,
         OpponentDraw,
-        OpponentMulligan,
         OpponentPlay,
         OpponentSecretTrigger,
         OpponentDeckDiscard,
@@ -107,6 +106,16 @@ namespace Hearthstone_Deck_Tracker
         public int From { get; private set; }
     }
 
+    public class OpponentMulliganArgs : EventArgs
+    {
+        public OpponentMulliganArgs(int pos)
+        {
+            Pos = pos;
+        }
+
+        public int Pos { get; private set; }
+    }
+
     public class HsLogReader
     {
         public delegate void CardMovementHandler(HsLogReader sender, CardMovementArgs args);
@@ -118,6 +127,8 @@ namespace Hearthstone_Deck_Tracker
         public delegate void TurnStartHandler(HsLogReader sender, TurnStartArgs args);
 
         public delegate void CardPosChangeHandler(HsLogReader sender, CardPosChangeArgs args);
+
+        public delegate void OpponentMulliganHandler(HsLogReader sender, OpponentMulliganArgs args);
 
         private readonly string _fullOutputPath;
         private readonly int _updateDelay;
@@ -195,6 +206,7 @@ namespace Hearthstone_Deck_Tracker
         public event AnalyzingHandler Analyzing;
         public event TurnStartHandler TurnStart;
         public event CardPosChangeHandler CardPosChange;
+        public event OpponentMulliganHandler OpponentMulligan;
 
         private bool _first;
 
@@ -382,8 +394,18 @@ namespace Hearthstone_Deck_Tracker
                                 _opposingLast = true;
                                 if (to == "OPPOSING DECK")
                                 {
-                                    //opponent mulligan
-                                    CardMovement(this, new CardMovementArgs(CardMovementType.OpponentMulligan, id));
+                                    var zonePos = 0;
+
+                                    // FIX ME - can be done better
+                                    if (!_opponentPlayRegex.IsMatch(logLine))
+                                        Debug.WriteLine("Opponent mulligan detection failed!", "LogReader");
+                                    else
+                                    {
+                                        Match match2 = _opponentPlayRegex.Match(logLine);
+                                        zonePos = int.Parse(match2.Groups["zonePos"].Value.Trim());
+                                    }
+
+                                    OpponentMulligan(this, new OpponentMulliganArgs(zonePos));
                                 }
                                 else if (to == "OPPOSING PLAY")
                                 {

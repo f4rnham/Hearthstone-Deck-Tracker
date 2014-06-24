@@ -251,6 +251,7 @@ namespace Hearthstone_Deck_Tracker
             _logReader.Analyzing += LogReaderOnAnalyzing;
             _logReader.TurnStart += LogReaderOnTurnStart;
             _logReader.CardPosChange += LogReaderOnCardPosChange;
+            _logReader.OpponentMulligan += LogReaderOnOpponentMulligan;
 
             _turnTimer = new TurnTimer(90);
             _turnTimer.TimerTick += TurnTimerOnTimerTick;
@@ -395,9 +396,6 @@ namespace Hearthstone_Deck_Tracker
                 case CardMovementType.OpponentPlay:
                     HandleOpponentPlay(args.CardId);
                     break;
-                case CardMovementType.OpponentMulligan:
-                    HandleOpponentMulligan();
-                    break;
                 case CardMovementType.OpponentHandDiscard:
                     HandleOpponentHandDiscard();
                     break;
@@ -417,6 +415,11 @@ namespace Hearthstone_Deck_Tracker
                     Console.WriteLine("Invalid card movement");
                     break;
             }
+        }
+
+        private void LogReaderOnOpponentMulligan(HsLogReader sender, OpponentMulliganArgs args)
+        {
+            HandleOpponentMulligan(args.Pos);
         }
 
         #endregion
@@ -554,10 +557,10 @@ namespace Hearthstone_Deck_Tracker
             _hearthstone.EnemyPlayed(cardId);
         }
 
-        private void HandleOpponentMulligan()
+        private void HandleOpponentMulligan(int pos)
         {
             _turnTimer.MulliganDone(Turn.Opponent);
-            _hearthstone.EnemyMulligan();
+            _hearthstone.EnemyMulligan(pos);
         }
 
         private void HandleOpponentHandDiscard()
@@ -1594,6 +1597,20 @@ namespace Hearthstone_Deck_Tracker
         {
             if (!_initialized) return;
             _config.HideOpponentCardAge = true;
+            SaveConfig(true);
+        }
+
+        private void CheckboxHideOpponentCardMarks_Unchecked(object sender, RoutedEventArgs e)
+        {
+            if (!_initialized) return;
+            _config.HideOpponentCardMarks = false;
+            SaveConfig(true);
+        }
+
+        private void CheckboxHideOpponentCardMarks_Checked(object sender, RoutedEventArgs e)
+        {
+            if (!_initialized) return;
+            _config.HideOpponentCardMarks = true;
             SaveConfig(true);
         }
 
