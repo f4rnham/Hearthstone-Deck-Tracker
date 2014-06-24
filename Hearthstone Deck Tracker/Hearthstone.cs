@@ -270,7 +270,7 @@ namespace Hearthstone_Deck_Tracker
             return true;
         }
 
-        public void OpponentBackToHand(string cardId)
+        public void OpponentBackToHand(string cardId, int turn)
         {
             EnemyHandCount++;
             if (EnemyCards.Any(c => c.Id == cardId))
@@ -283,6 +283,8 @@ namespace Hearthstone_Deck_Tracker
                     EnemyCards.Add(card);
                 }
             }
+
+            OpponentHand[EnemyHandCount - 1] = turn;
         }
         public void EnemyHandDiscard()
         {

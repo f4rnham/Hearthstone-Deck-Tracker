@@ -408,7 +408,7 @@ namespace Hearthstone_Deck_Tracker
                     HandleOpponentDeckDiscard(args.CardId);
                     break;
                 case CardMovementType.OpponentPlayToHand:
-                    HandleOpponentPlayToHand(args.CardId);
+                    HandleOpponentPlayToHand(args.CardId, sender.GetTurnNumber());
                     break;
                 case CardMovementType.OpponentGet:
                     HandleOpponentGet(args.CardId);
@@ -493,9 +493,9 @@ namespace Hearthstone_Deck_Tracker
             _hearthstone.OpponentGet(cardId);
         }
 
-        private void HandleOpponentPlayToHand(string cardId)
+        private void HandleOpponentPlayToHand(string cardId, int turn)
         {
-            _hearthstone.OpponentBackToHand(cardId);
+            _hearthstone.OpponentBackToHand(cardId, turn);
         }
 
         private void HandlePlayerGet(string cardId)

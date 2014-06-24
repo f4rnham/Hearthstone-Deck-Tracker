@@ -172,6 +172,11 @@ namespace Hearthstone_Deck_Tracker
             _fullOutputPath = @hsDirPath + @"\Hearthstone_Data\output_log.txt"; 
         }
 
+        public int GetTurnNumber()
+        {
+            return (_turnCount + 1) / 2;
+        }
+
         public void Start()
         {
             _first = true;
@@ -411,11 +416,9 @@ namespace Hearthstone_Deck_Tracker
                                         _turnCount++;
                                     }
                                     if (CardPosChange != null)
-                                        CardPosChange(this,
-                                                      new CardPosChangeArgs(OpponentHandMovement.Draw, 0,
-                                                                            (_turnCount + 1) / 2));
-                                    Debug.WriteLine(string.Format("Opponent draw from {0} at turn {1}", 0, ((_turnCount + 1) / 2)),
-                                                    "LogReader");
+                                        CardPosChange(this, new CardPosChangeArgs(OpponentHandMovement.Draw, 0, GetTurnNumber()));
+
+                                    Debug.WriteLine(string.Format("Opponent draw from {0} at turn {1}", 0, GetTurnNumber()), "LogReader");
                                 }
                                 else
                                 {
@@ -470,11 +473,9 @@ namespace Hearthstone_Deck_Tracker
                             try
                             {
                                 if (CardPosChange != null)
-                                    CardPosChange(this,
-                                                  new CardPosChangeArgs(OpponentHandMovement.Draw, 0,
-                                                                        (_turnCount + 1) / 2));
-                                Debug.WriteLine(string.Format("Opponent draw from {0} at turn {1}", 0, ((_turnCount + 1) / 2)),
-                                                "LogReader");
+                                    CardPosChange(this, new CardPosChangeArgs(OpponentHandMovement.Draw, 0, GetTurnNumber()));
+
+                                Debug.WriteLine(string.Format("Opponent draw from {0} at turn {1}", 0, GetTurnNumber()), "LogReader");
                             }
                             catch (Exception e)
                             {
@@ -488,7 +489,7 @@ namespace Hearthstone_Deck_Tracker
                     {
                         Match match = _opponentPlayRegex.Match(logLine);
                         var zonePos = int.Parse(match.Groups["zonePos"].Value.Trim());
-                        CardPosChange(this, new CardPosChangeArgs(OpponentHandMovement.Play, zonePos, ((_turnCount+1) / 2)));
+                        CardPosChange(this, new CardPosChangeArgs(OpponentHandMovement.Play, zonePos, GetTurnNumber()));
                     }
 
                 }
